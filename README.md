@@ -101,11 +101,12 @@ docker compose up --build
 
 ## CI pipeline
 
-GitHub Actions workflow at `.github/workflows/ci.yml` runs:
+GitHub Actions workflow at `.github/workflows/ci.yml` now runs **separate stages/jobs**:
 
-1. Python dependency install
-2. Unit tests (`pytest -q`)
-3. Docker image build validation
+1. **Checkout** (source packaging)
+2. **Build** (dependency install + `py_compile`)
+3. **Test** (`pytest -q`)
+4. **Dockerize** (`docker build`)
 
 ## Notes
 
