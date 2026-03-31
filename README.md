@@ -108,6 +108,8 @@ GitHub Actions workflow at `.github/workflows/ci.yml` now runs **separate stages
 3. **Test** (`pytest -q`)
 4. **Dockerize** (`docker build`)
 
+The workflow also sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and uses latest major action versions to stay ahead of the Node 20 deprecation timeline.
+
 ## Notes
 
 - This MVP shells out to `kubectl`; your local auth/context (`KUBECONFIG`) controls target clusters.

@@ -5,16 +5,19 @@ on:
     branches: ["**"]
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   checkout:
     name: Checkout
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Upload source artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: source
           path: .
@@ -25,7 +28,7 @@ jobs:
     needs: checkout
     steps:
       - name: Download source artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: source
           path: .
@@ -49,7 +52,7 @@ jobs:
     needs: build
     steps:
       - name: Download source artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: source
           path: .
@@ -73,7 +76,7 @@ jobs:
     needs: test
     steps:
       - name: Download source artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: source
           path: .
