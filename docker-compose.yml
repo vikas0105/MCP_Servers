@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  sre-web-ui:
+    build: .
+    image: k8s-mcp-mvp:latest
+    command: ["web"]
+    ports:
+      - "8000:8000"
+    environment:
+      - KUBECONFIG=/kube/config
+    volumes:
+      - ${HOME}/.kube:/kube:ro
+
+  k8s-mcp-server:
+    build: .
+    image: k8s-mcp-mvp:latest
+    command: ["mcp"]
+    stdin_open: true
+    tty: true
+    environment:
+      - KUBECONFIG=/kube/config
+    volumes:
+      - ${HOME}/.kube:/kube:ro

@@ -1,0 +1,117 @@
+from k8s_ops import K8sOps
+
+
+class FakeOps(K8sOps):
+    def __init__(self, payloads, run_payloads=None):
+        super().__init__(kubectl_bin="kubectl")
+        self.payloads = payloads
+        self.run_payloads = run_payloads or {}
+
+    def _json(self, args):
+        key = " ".join(args)
+        return self.payloads[key]
+
+    def _run(self, args):
+        key = " ".join(args)
+        fake_stdout = self.run_payloads.get(key, "")
+        return type("Result", (), {"stdout": fake_stdout, "command": key})
+
+
+def test_get_pods_parses_restart_counts():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-1"},
+                        "status": {
+                            "phase": "Running",
+                            "podIP": "10.1.1.10",
+                            "hostIP": "192.168.1.10",
+                            "containerStatuses": [
+                                {"restartCount": 2},
+                                {"restartCount": 1},
+                            ],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    pods = ops.get_pods()
+
+    assert pods == [
+        {
+            "name": "api-1",
+            "phase": "Running",
+            "pod_ip": "10.1.1.10",
+            "node": "192.168.1.10",
+            "restarts": 3,
+        }
+    ]
+
+
+def test_get_deployments_maps_counts():
+    ops = FakeOps(
+        {
+            "get deployments -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "web"},
+                        "spec": {"replicas": 3},
+                        "status": {"readyReplicas": 2, "updatedReplicas": 3, "availableReplicas": 2},
+                    }
+                ]
+            }
+        }
+    )
+
+    deps = ops.get_deployments()
+
+    assert deps[0]["name"] == "web"
+    assert deps[0]["desired"] == 3
+    assert deps[0]["ready"] == 2
+
+
+def test_cluster_health_summary_flags_problems():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "worker-1"},
+                        "status": {
+                            "phase": "CrashLoopBackOff",
+                            "containerStatuses": [{"restartCount": 7}],
+                        },
+                    }
+                ]
+            },
+            "get deployments -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "worker"},
+                        "spec": {"replicas": 2},
+                        "status": {"readyReplicas": 1, "updatedReplicas": 1, "availableReplicas": 1},
+                    }
+                ]
+            },
+            "get events -n default --sort-by=.lastTimestamp": {
+                "items": [
+                    {
+                        "type": "Warning",
+                        "reason": "BackOff",
+                        "message": "Back-off restarting failed container",
+                        "involvedObject": {"name": "worker-1"},
+                    }
+                ]
+            },
+        }
+    )
+
+    summary = ops.cluster_health_summary()
+
+    assert summary["overall_status"] == "needs_attention"
+    assert summary["warning_event_count"] == 1
+    assert summary["degraded_deployments"][0]["name"] == "worker"

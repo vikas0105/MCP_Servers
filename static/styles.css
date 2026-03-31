@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+  --bg: #111827;
+  --panel: #1f2937;
+  --text: #e5e7eb;
+  --accent: #34d399;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+section {
+  background: var(--panel);
+  padding: 1rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+}
+
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+input, button {
+  background: #0f172a;
+  color: var(--text);
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+}
+
+button {
+  cursor: pointer;
+  border-color: var(--accent);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.4rem;
+  border-bottom: 1px solid #374151;
+}
+
+#status {
+  color: var(--accent);
+}
