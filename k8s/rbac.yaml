@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sre-copilot
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-mcp-sa
+  namespace: sre-copilot
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-mcp-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-mcp-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: k8s-mcp-sa
+    namespace: sre-copilot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-mcp-role

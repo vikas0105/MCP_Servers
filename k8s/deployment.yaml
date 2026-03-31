@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-mcp-web
+  namespace: sre-copilot
+  labels:
+    app: k8s-mcp-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-mcp-web
+  template:
+    metadata:
+      labels:
+        app: k8s-mcp-web
+    spec:
+      serviceAccountName: k8s-mcp-sa
+      containers:
+        - name: k8s-mcp-web
+          image: ghcr.io/YOUR_ORG/k8s-mcp-mvp:latest
+          imagePullPolicy: Always
+          args: ["web"]
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

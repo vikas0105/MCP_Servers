@@ -133,6 +133,64 @@ Then open locally:
 http://127.0.0.1:8000
 ```
 
+
+## Deploying into Kubernetes
+
+This repo now includes example manifests under `k8s/`:
+
+- `k8s/rbac.yaml` (namespace + service account + RBAC)
+- `k8s/deployment.yaml` (web UI deployment)
+- `k8s/service.yaml` (ClusterIP service)
+
+### 1) Build and push image
+
+```bash
+docker build -t ghcr.io/<YOUR_ORG>/k8s-mcp-mvp:<TAG> .
+docker push ghcr.io/<YOUR_ORG>/k8s-mcp-mvp:<TAG>
+```
+
+### 2) Set your image in manifest
+
+Edit `k8s/deployment.yaml` and replace:
+
+```text
+ghcr.io/YOUR_ORG/k8s-mcp-mvp:latest
+```
+
+with your pushed image tag.
+
+### 3) Apply manifests
+
+```bash
+kubectl apply -f k8s/rbac.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+### 4) Access the UI
+
+For quick local access:
+
+```bash
+kubectl -n sre-copilot port-forward svc/k8s-mcp-web 8000:80
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+### 5) Verify rollout
+
+```bash
+kubectl -n sre-copilot get pods
+kubectl -n sre-copilot get svc
+kubectl -n sre-copilot logs deploy/k8s-mcp-web
+```
+
+> Note: the provided RBAC is broad enough for this MVP toolset (read cluster objects + patch deployments for restart). Tighten permissions per your org policy before production.
+
 ## CI pipeline
 
 GitHub Actions workflow at `.github/workflows/ci.yml` now runs **separate stages/jobs**:
