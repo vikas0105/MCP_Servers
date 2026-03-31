@@ -54,7 +54,7 @@ pip install -e .[dev]
 ### 2) Run web UI
 
 ```bash
-uvicorn src.web_ui:app --reload
+uvicorn web_ui:app --app-dir src --reload --host 127.0.0.1 --port 8000
 ```
 
 Open: http://127.0.0.1:8000
@@ -97,6 +97,40 @@ docker run --rm -it \
 
 ```bash
 docker compose up --build
+```
+
+## Deploying / Viewing Web UI on a VM or EC2
+
+### Option A: Direct access via public/private IP
+
+1. Start the UI so it listens on all interfaces:
+
+```bash
+uvicorn web_ui:app --app-dir src --host 0.0.0.0 --port 8000
+```
+
+2. Ensure network access:
+   - **EC2 Security Group**: allow inbound TCP `8000` from your office IP/VPN CIDR.
+   - **OS firewall** (if enabled): allow TCP `8000`.
+
+3. Open in browser:
+
+```text
+http://<VM_OR_EC2_IP>:8000
+```
+
+### Option B: SSH tunnel (recommended for security)
+
+Keep app bound to localhost (`127.0.0.1`) and tunnel:
+
+```bash
+ssh -i <key>.pem -L 8000:127.0.0.1:8000 <user>@<VM_OR_EC2_IP>
+```
+
+Then open locally:
+
+```text
+http://127.0.0.1:8000
 ```
 
 ## CI pipeline
