@@ -27,6 +27,12 @@ def get_nodes() -> list[dict]:
 
 
 @mcp.tool()
+def get_services(namespace: str = "default") -> list[dict]:
+    """List services and exposed ports in a namespace."""
+    return ops.get_services(namespace=namespace)
+
+
+@mcp.tool()
 def get_pods(namespace: str = "default", label_selector: str | None = None) -> list[dict]:
     """Return pod health snapshot for a namespace."""
     return ops.get_pods(namespace=namespace, label_selector=label_selector)
@@ -44,6 +50,24 @@ def get_pod_health(namespace: str = "default", pod: str | None = None) -> list[d
 def restart_pod(namespace: str, pod: str) -> dict:
     """Restart a pod by deleting it (controller will recreate)."""
     return ops.restart_pod(namespace=namespace, pod=pod)
+
+
+@mcp.tool()
+def scale_deployment(namespace: str, deployment: str, replicas: int) -> dict:
+    """Scale a deployment to a target replica count."""
+    return ops.scale_deployment(namespace=namespace, deployment=deployment, replicas=replicas)
+
+
+@mcp.tool()
+def cordon_node(node: str) -> dict:
+    """Mark a node unschedulable for maintenance."""
+    return ops.cordon_node(node=node)
+
+
+@mcp.tool()
+def uncordon_node(node: str) -> dict:
+    """Mark a node schedulable again after maintenance."""
+    return ops.uncordon_node(node=node)
 
 
 @mcp.tool()
@@ -80,6 +104,12 @@ def restart_deployment(namespace: str, deployment: str) -> dict:
 def get_recent_events(namespace: str = "default", limit: int = 25) -> list[dict]:
     """Return recent events to triage incidents quickly."""
     return ops.get_recent_events(namespace=namespace, limit=limit)
+
+
+@mcp.tool()
+def get_namespace_report(namespace: str = "default") -> dict:
+    """Return a compact namespace report with pod, service, deployment, and event signals."""
+    return ops.get_namespace_report(namespace=namespace)
 
 
 @mcp.tool()

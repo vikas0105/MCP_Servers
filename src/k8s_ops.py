@@ -70,6 +70,22 @@ class K8sOps:
             )
         return nodes
 
+    def get_services(self, namespace: str = "default") -> list[dict[str, Any]]:
+        doc = self._json(["get", "services", "-n", namespace])
+        services = []
+        for svc in doc.get("items", []):
+            spec = svc.get("spec", {})
+            ports = spec.get("ports", [])
+            services.append(
+                {
+                    "name": svc.get("metadata", {}).get("name"),
+                    "type": spec.get("type"),
+                    "cluster_ip": spec.get("clusterIP"),
+                    "ports": [f"{item.get('port')}/{item.get('protocol', 'TCP')}" for item in ports],
+                }
+            )
+        return services
+
     def get_pods(self, namespace: str = "default", label_selector: str | None = None) -> list[dict[str, Any]]:
         args = ["get", "pods", "-n", namespace]
         if label_selector:
@@ -145,6 +161,23 @@ class K8sOps:
             "command": result.command,
             "result": result.stdout.strip() or "pod restart triggered",
         }
+
+    def scale_deployment(self, namespace: str, deployment: str, replicas: int) -> dict[str, Any]:
+        result = self._run(["scale", "deployment", deployment, "-n", namespace, f"--replicas={replicas}"])
+        return {
+            "namespace": namespace,
+            "deployment": deployment,
+            "replicas": replicas,
+            "result": result.stdout.strip() or "scale triggered",
+        }
+
+    def cordon_node(self, node: str) -> dict[str, Any]:
+        result = self._run(["cordon", node])
+        return {"node": node, "action": "cordon", "result": result.stdout.strip() or "node cordoned"}
+
+    def uncordon_node(self, node: str) -> dict[str, Any]:
+        result = self._run(["uncordon", node])
+        return {"node": node, "action": "uncordon", "result": result.stdout.strip() or "node uncordoned"}
 
     def get_deployments(self, namespace: str = "default") -> list[dict[str, Any]]:
         doc = self._json(["get", "deployments", "-n", namespace])
@@ -229,6 +262,27 @@ class K8sOps:
                 }
             )
         return events[-limit:]
+
+    def get_namespace_report(self, namespace: str = "default") -> dict[str, Any]:
+        pod_health = self.get_pod_health(namespace=namespace)
+        deployments = self.get_deployments(namespace=namespace)
+        services = self.get_services(namespace=namespace)
+        events = self.get_recent_events(namespace=namespace, limit=20)
+
+        not_ready_pods = [p for p in pod_health if p.get("readiness") != "ready"]
+        degraded_pods = [p for p in pod_health if p.get("liveness") != "healthy"]
+
+        return {
+            "namespace": namespace,
+            "pods_total": len(pod_health),
+            "pods_not_ready": len(not_ready_pods),
+            "pods_degraded": len(degraded_pods),
+            "deployments_total": len(deployments),
+            "services_total": len(services),
+            "recent_events": events,
+            "services": services,
+            "degraded_pod_names": [p.get("name") for p in degraded_pods],
+        }
 
     def cluster_health_summary(self, namespace: str = "default") -> dict[str, Any]:
         pods = self.get_pods(namespace=namespace)

@@ -20,6 +20,7 @@ This repository now contains a practical MVP for:
 - `list_contexts()`
 - `get_namespaces()`
 - `get_nodes()`
+- `get_services(namespace="default")`
 - `get_pods(namespace="default", label_selector=None)`
 - `get_pod_health(namespace="default", pod=None)`
 - `get_deployments(namespace="default")`
@@ -27,8 +28,12 @@ This repository now contains a practical MVP for:
 - `get_pod_logs(namespace, pod, container=None, tail_lines=200)`
 - `rollout_status(namespace, deployment, timeout_seconds=120)`
 - `restart_pod(namespace, pod)`
+- `scale_deployment(namespace, deployment, replicas)`
 - `restart_deployment(namespace, deployment)`
+- `cordon_node(node)`
+- `uncordon_node(node)`
 - `get_recent_events(namespace="default", limit=25)`
+- `get_namespace_report(namespace="default")`
 - `cluster_health_summary(namespace="default")`
 
 ### Web UI

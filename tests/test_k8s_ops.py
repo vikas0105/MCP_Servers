@@ -162,3 +162,66 @@ def test_restart_pod_uses_delete():
 
     assert result["pod"] == "api-1"
     assert "deleted" in result["result"]
+
+
+def test_get_services_parses_ports():
+    ops = FakeOps(
+        {
+            "get services -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api"},
+                        "spec": {
+                            "type": "ClusterIP",
+                            "clusterIP": "10.96.0.10",
+                            "ports": [{"port": 80, "protocol": "TCP"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    services = ops.get_services()
+
+    assert services[0]["name"] == "api"
+    assert services[0]["ports"] == ["80/TCP"]
+
+
+def test_scale_deployment_invokes_kubectl_scale():
+    ops = FakeOps({}, run_payloads={"scale deployment api -n default --replicas=3": "deployment.apps/api scaled\n"})
+
+    result = ops.scale_deployment(namespace="default", deployment="api", replicas=3)
+
+    assert result["deployment"] == "api"
+    assert result["replicas"] == 3
+
+
+def test_namespace_report_aggregates_signals():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-1"},
+                        "status": {
+                            "phase": "Running",
+                            "conditions": [{"type": "Ready", "status": "False"}],
+                            "containerStatuses": [
+                                {"restartCount": 4, "state": {"waiting": {"reason": "ImagePullBackOff"}}}
+                            ],
+                        },
+                    }
+                ]
+            },
+            "get deployments -n default": {"items": []},
+            "get services -n default": {"items": []},
+            "get events -n default --sort-by=.lastTimestamp": {"items": []},
+        }
+    )
+
+    report = ops.get_namespace_report(namespace="default")
+
+    assert report["pods_total"] == 1
+    assert report["pods_not_ready"] == 1
+    assert report["pods_degraded"] == 1
