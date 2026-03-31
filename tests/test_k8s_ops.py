@@ -115,3 +115,50 @@ def test_cluster_health_summary_flags_problems():
     assert summary["overall_status"] == "needs_attention"
     assert summary["warning_event_count"] == 1
     assert summary["degraded_deployments"][0]["name"] == "worker"
+
+
+def test_get_pod_health_readiness_and_liveness():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-1"},
+                        "status": {
+                            "phase": "Running",
+                            "podIP": "10.1.1.5",
+                            "hostIP": "192.168.1.5",
+                            "conditions": [{"type": "Ready", "status": "True"}],
+                            "containerStatuses": [{"restartCount": 1, "state": {"running": {}}}],
+                        },
+                    },
+                    {
+                        "metadata": {"name": "api-2"},
+                        "status": {
+                            "phase": "Running",
+                            "conditions": [{"type": "Ready", "status": "False"}],
+                            "containerStatuses": [
+                                {"restartCount": 8, "state": {"waiting": {"reason": "CrashLoopBackOff"}}}
+                            ],
+                        },
+                    },
+                ]
+            }
+        }
+    )
+
+    health = ops.get_pod_health()
+
+    assert health[0]["readiness"] == "ready"
+    assert health[0]["liveness"] == "healthy"
+    assert health[1]["readiness"] == "not_ready"
+    assert "CrashLoopBackOff" in health[1]["liveness"]
+
+
+def test_restart_pod_uses_delete():
+    ops = FakeOps({}, run_payloads={"delete pod api-1 -n default": "pod \"api-1\" deleted\n"})
+
+    result = ops.restart_pod(namespace="default", pod="api-1")
+
+    assert result["pod"] == "api-1"
+    assert "deleted" in result["result"]

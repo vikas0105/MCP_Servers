@@ -21,10 +21,12 @@ This repository now contains a practical MVP for:
 - `get_namespaces()`
 - `get_nodes()`
 - `get_pods(namespace="default", label_selector=None)`
+- `get_pod_health(namespace="default", pod=None)`
 - `get_deployments(namespace="default")`
 - `describe_resource(kind, name, namespace=None)`
 - `get_pod_logs(namespace, pod, container=None, tail_lines=200)`
 - `rollout_status(namespace, deployment, timeout_seconds=120)`
+- `restart_pod(namespace, pod)`
 - `restart_deployment(namespace, deployment)`
 - `get_recent_events(namespace="default", limit=25)`
 - `cluster_health_summary(namespace="default")`
@@ -36,7 +38,7 @@ This repository now contains a practical MVP for:
   - active kube context(s)
   - cluster health summary
   - node readiness table
-  - pod table (phase/restarts/IP/node)
+  - pod table with readiness/liveness health
   - deployment readiness
   - recent events
 - Restart a deployment from the table.

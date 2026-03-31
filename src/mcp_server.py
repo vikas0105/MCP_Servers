@@ -32,6 +32,20 @@ def get_pods(namespace: str = "default", label_selector: str | None = None) -> l
     return ops.get_pods(namespace=namespace, label_selector=label_selector)
 
 
+
+
+@mcp.tool()
+def get_pod_health(namespace: str = "default", pod: str | None = None) -> list[dict]:
+    """Inspect pod readiness/liveness-style health for one or more pods."""
+    return ops.get_pod_health(namespace=namespace, pod=pod)
+
+
+@mcp.tool()
+def restart_pod(namespace: str, pod: str) -> dict:
+    """Restart a pod by deleting it (controller will recreate)."""
+    return ops.restart_pod(namespace=namespace, pod=pod)
+
+
 @mcp.tool()
 def get_deployments(namespace: str = "default") -> list[dict]:
     """Return deployment readiness for a namespace."""

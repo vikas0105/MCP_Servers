@@ -91,6 +91,61 @@ class K8sOps:
             )
         return items
 
+    def get_pod_health(self, namespace: str = "default", pod: str | None = None) -> list[dict[str, Any]]:
+        args = ["get", "pods", "-n", namespace]
+        if pod:
+            args.append(pod)
+        doc = self._json(args)
+        items = doc.get("items", [])
+        if pod and not items and doc.get("metadata", {}).get("name"):
+            items = [doc]
+
+        health = []
+        for p in items:
+            status = p.get("status", {})
+            conditions = status.get("conditions", [])
+            container_statuses = status.get("containerStatuses", [])
+            ready_condition = next((c.get("status") for c in conditions if c.get("type") == "Ready"), "Unknown")
+
+            waiting_reasons = [
+                cs.get("state", {}).get("waiting", {}).get("reason")
+                for cs in container_statuses
+                if cs.get("state", {}).get("waiting")
+            ]
+            running_containers = sum(1 for cs in container_statuses if "running" in cs.get("state", {}))
+            total_containers = len(container_statuses)
+            restart_count = sum(cs.get("restartCount", 0) for cs in container_statuses)
+
+            liveness_status = "healthy"
+            if waiting_reasons:
+                liveness_status = f"degraded ({', '.join(r for r in waiting_reasons if r)})"
+            elif total_containers > 0 and running_containers < total_containers:
+                liveness_status = "degraded (containers not fully running)"
+
+            health.append(
+                {
+                    "name": p.get("metadata", {}).get("name"),
+                    "namespace": namespace,
+                    "phase": status.get("phase"),
+                    "readiness": "ready" if ready_condition == "True" else "not_ready",
+                    "liveness": liveness_status,
+                    "restarts": restart_count,
+                    "pod_ip": status.get("podIP"),
+                    "node": status.get("hostIP"),
+                }
+            )
+
+        return health
+
+    def restart_pod(self, namespace: str, pod: str) -> dict[str, Any]:
+        result = self._run(["delete", "pod", pod, "-n", namespace])
+        return {
+            "namespace": namespace,
+            "pod": pod,
+            "command": result.command,
+            "result": result.stdout.strip() or "pod restart triggered",
+        }
+
     def get_deployments(self, namespace: str = "default") -> list[dict[str, Any]]:
         doc = self._json(["get", "deployments", "-n", namespace])
         items = []

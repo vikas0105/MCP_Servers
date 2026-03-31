@@ -50,6 +50,22 @@ def pods(namespace: str = Query("default"), label_selector: str | None = Query(N
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.get("/api/pod-health")
+def pod_health(namespace: str = Query("default"), pod: str | None = Query(None)) -> list[dict]:
+    try:
+        return ops.get_pod_health(namespace=namespace, pod=pod)
+    except KubectlError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/restart-pod/{namespace}/{pod}")
+def restart_pod(namespace: str, pod: str) -> dict:
+    try:
+        return ops.restart_pod(namespace=namespace, pod=pod)
+    except KubectlError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @app.get("/api/deployments")
 def deployments(namespace: str = Query("default")) -> list[dict]:
     try:
