@@ -15,7 +15,7 @@ metadata:
   name: k8s-mcp-role
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "events", "namespaces", "nodes"]
+    resources: ["pods", "pods/log", "events", "namespaces", "nodes", "persistentvolumeclaims", "persistentvolumes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]

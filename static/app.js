@@ -9,6 +9,14 @@ async function fetchJson(url, options = {}) {
   return res.json();
 }
 
+async function fetchJsonSafe(url, fallback) {
+  try {
+    return await fetchJson(url);
+  } catch (err) {
+    return { ...fallback, _error: err.message };
+  }
+}
+
 function badge(value, type = "neutral") {
   return `<span class="badge ${type}">${value ?? "n/a"}</span>`;
 }
@@ -58,7 +66,7 @@ async function refresh() {
       fetchJson(`/api/deployments?namespace=${encodeURIComponent(namespace)}`),
       fetchJson(`/api/events?namespace=${encodeURIComponent(namespace)}&limit=20`),
       fetchJson(`/api/summary?namespace=${encodeURIComponent(namespace)}`),
-      fetchJson(`/api/storage?namespace=${encodeURIComponent(namespace)}`),
+      fetchJsonSafe(`/api/storage?namespace=${encodeURIComponent(namespace)}`, { unavailable: true }),
     ]);
 
     hydrateNamespaces(namespaces);
@@ -71,7 +79,12 @@ async function refresh() {
     qs("events").innerHTML = events
       .map((e) => `<li><strong>${e.time ?? "n/a"}</strong> <span class="reason">${e.type ?? "?"}/${e.reason ?? "?"}</span> ${e.object ?? ""}<div>${e.message ?? ""}</div></li>`)
       .join("");
-    qs("status").textContent = "Last refresh successful.";
+
+    if (storage._error) {
+      qs("status").textContent = `Partial refresh: storage monitor unavailable (${storage._error})`;
+    } else {
+      qs("status").textContent = "Last refresh successful.";
+    }
   } catch (err) {
     qs("status").textContent = `Error: ${err.message}`;
   }
