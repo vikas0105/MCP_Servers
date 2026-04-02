@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K8s SRE Copilot MVP</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <header class="hero">
+        <h1>Kubernetes SRE Copilot</h1>
+        <p>Operational visibility for pod health, deployment state, events, and quick remediation actions.</p>
+      </header>
+
+      <section class="controls card">
+        <label>Namespace <input id="namespace" list="namespaces" value="default" /></label>
+        <datalist id="namespaces"></datalist>
+        <label>Label selector <input id="selector" placeholder="app=my-service" /></label>
+        <button id="refreshBtn">Refresh</button>
+        <button id="restartStoppedBtn">Restart Stopped Pods</button>
+      </section>
+
+      <section class="card">
+        <h2>Cluster Health Summary</h2>
+        <pre id="summary">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Contexts</h2>
+        <pre id="contexts">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Nodes</h2>
+        <table id="nodeTable"><thead><tr><th>Name</th><th>Ready</th><th>Kubelet</th><th>OS</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <section class="card">
+        <h2>Pod Health (Readiness/Liveness)</h2>
+        <table id="podsTable"><thead><tr><th>Name</th><th>Phase</th><th>Readiness</th><th>Liveness</th><th>Restarts</th><th>Pod IP</th><th>Node</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </section>
+
+
+      <section class="card">
+        <h2>PVC / PV Monitor</h2>
+        <pre id="storage">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Deployments</h2>
+        <table id="depTable"><thead><tr><th>Name</th><th>Ready</th><th>Desired</th><th>Updated</th><th>Available</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <section class="card">
+        <h2>Recent Events</h2>
+        <ul id="events" class="events"></ul>
+      </section>
+      <p id="status" class="status-line"></p>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
