@@ -232,6 +232,9 @@ The workflow also sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and uses latest
 ## Notes
 
 - This MVP shells out to `kubectl`; your local auth/context (`KUBECONFIG`) controls target clusters.
+- The web service auto-loads Kubernetes config at startup using:
+  - `load_incluster_config()` when running inside Kubernetes,
+  - fallback to `load_kube_config()` for local/dev usage.
 - Mutating action in MVP: deployment restart.
 - Future hardening ideas:
   - RBAC policy checks
