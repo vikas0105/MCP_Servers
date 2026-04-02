@@ -9,29 +9,35 @@ async function fetchJson(url, options = {}) {
   return res.json();
 }
 
+function badge(value, type = "neutral") {
+  return `<span class="badge ${type}">${value ?? "n/a"}</span>`;
+}
+
 function podRows(pods, namespace) {
   return pods
-    .map(
-      (p) =>
-        `<tr><td>${p.name ?? ""}</td><td>${p.phase ?? ""}</td><td>${p.readiness ?? ""}</td><td>${p.liveness ?? ""}</td><td>${p.restarts ?? 0}</td><td>${p.pod_ip ?? ""}</td><td>${p.node ?? ""}</td><td><button data-pod="${p.name}" data-ns="${namespace}">Restart Pod</button></td></tr>`
-    )
+    .map((p) => {
+      const readinessType = p.readiness === "ready" ? "ok" : "warn";
+      const livenessType = p.liveness?.startsWith("healthy") ? "ok" : "warn";
+      return `<tr><td>${p.name ?? ""}</td><td>${p.phase ?? ""}</td><td>${badge(p.readiness, readinessType)}</td><td>${badge(p.liveness, livenessType)}</td><td>${p.restarts ?? 0}</td><td>${p.pod_ip ?? ""}</td><td>${p.node ?? ""}</td><td><button data-pod="${p.name}" data-ns="${namespace}">Restart Pod</button></td></tr>`;
+    })
     .join("");
 }
 
 function nodeRows(nodes) {
   return nodes
-    .map(
-      (n) => `<tr><td>${n.name ?? ""}</td><td>${n.ready ?? ""}</td><td>${n.kubelet_version ?? ""}</td><td>${n.os_image ?? ""}</td></tr>`
-    )
+    .map((n) => {
+      const readyType = n.ready === "True" ? "ok" : "warn";
+      return `<tr><td>${n.name ?? ""}</td><td>${badge(n.ready ?? "", readyType)}</td><td>${n.kubelet_version ?? ""}</td><td>${n.os_image ?? ""}</td></tr>`;
+    })
     .join("");
 }
 
 function deploymentRows(deployments, namespace) {
   return deployments
-    .map(
-      (d) =>
-        `<tr><td>${d.name}</td><td>${d.ready}</td><td>${d.desired}</td><td>${d.updated}</td><td>${d.available}</td><td><button data-dep="${d.name}" data-ns="${namespace}">Restart Deployment</button></td></tr>`
-    )
+    .map((d) => {
+      const healthy = Number(d.ready) >= Number(d.desired);
+      return `<tr><td>${d.name}</td><td>${badge(d.ready, healthy ? "ok" : "warn")}</td><td>${d.desired}</td><td>${d.updated}</td><td>${d.available}</td><td><button data-dep="${d.name}" data-ns="${namespace}">Restart Deployment</button></td></tr>`;
+    })
     .join("");
 }
 
@@ -61,7 +67,7 @@ async function refresh() {
     qs("podsTable").querySelector("tbody").innerHTML = podRows(pods, namespace);
     qs("depTable").querySelector("tbody").innerHTML = deploymentRows(deployments, namespace);
     qs("events").innerHTML = events
-      .map((e) => `<li><strong>${e.time ?? "n/a"}</strong> [${e.type ?? "?"}/${e.reason ?? "?"}] ${e.object ?? ""} — ${e.message ?? ""}</li>`)
+      .map((e) => `<li><strong>${e.time ?? "n/a"}</strong> <span class="reason">${e.type ?? "?"}/${e.reason ?? "?"}</span> ${e.object ?? ""}<div>${e.message ?? ""}</div></li>`)
       .join("");
     qs("status").textContent = "Last refresh successful.";
   } catch (err) {
