@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,15 +9,27 @@ from fastapi.templating import Jinja2Templates
 
 from k8s_ops import K8sOps, KubectlError
 
+BASE_DIR = Path(__file__).resolve().parents[1]
+
 app = FastAPI(title="Kubernetes SRE Copilot MVP")
 ops = K8sOps()
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(name="index.html", request=request, context={})
+
+
+@app.get("/health/live")
+def live() -> dict[str, str]:
+    return {"status": "live"}
+
+
+@app.get("/health/ready")
+def ready() -> dict[str, str]:
+    return {"status": "ready"}
 
 
 @app.get("/api/contexts")
