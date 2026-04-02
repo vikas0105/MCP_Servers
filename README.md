@@ -22,7 +22,7 @@ This repository now contains a practical MVP for:
 - `get_nodes()`
 - `get_services(namespace="default")`
 - `get_pods(namespace="default", label_selector=None)`
-- `get_pod_health(namespace="default", pod=None)`
+- `get_pod_health(namespace="default", pod=None, label_selector=None)`
 - `get_deployments(namespace="default")`
 - `describe_resource(kind, name, namespace=None)`
 - `get_pod_logs(namespace, pod, container=None, tail_lines=200)`

@@ -41,9 +41,13 @@ def get_pods(namespace: str = "default", label_selector: str | None = None) -> l
 
 
 @mcp.tool()
-def get_pod_health(namespace: str = "default", pod: str | None = None) -> list[dict]:
+def get_pod_health(
+    namespace: str = "default",
+    pod: str | None = None,
+    label_selector: str | None = None,
+) -> list[dict]:
     """Inspect pod readiness/liveness-style health for one or more pods."""
-    return ops.get_pod_health(namespace=namespace, pod=pod)
+    return ops.get_pod_health(namespace=namespace, pod=pod, label_selector=label_selector)
 
 
 @mcp.tool()

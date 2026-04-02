@@ -65,9 +65,13 @@ def pods(namespace: str = Query("default"), label_selector: str | None = Query(N
 
 
 @app.get("/api/pod-health")
-def pod_health(namespace: str = Query("default"), pod: str | None = Query(None)) -> list[dict]:
+def pod_health(
+    namespace: str = Query("default"),
+    pod: str | None = Query(None),
+    label_selector: str | None = Query(None),
+) -> list[dict]:
     try:
-        return ops.get_pod_health(namespace=namespace, pod=pod)
+        return ops.get_pod_health(namespace=namespace, pod=pod, label_selector=label_selector)
     except KubectlError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

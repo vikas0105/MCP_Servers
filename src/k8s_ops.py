@@ -107,10 +107,17 @@ class K8sOps:
             )
         return items
 
-    def get_pod_health(self, namespace: str = "default", pod: str | None = None) -> list[dict[str, Any]]:
+    def get_pod_health(
+        self,
+        namespace: str = "default",
+        pod: str | None = None,
+        label_selector: str | None = None,
+    ) -> list[dict[str, Any]]:
         args = ["get", "pods", "-n", namespace]
         if pod:
             args.append(pod)
+        elif label_selector:
+            args.extend(["-l", label_selector])
         doc = self._json(args)
         items = doc.get("items", [])
         if pod and not items and doc.get("metadata", {}).get("name"):

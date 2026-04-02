@@ -155,6 +155,30 @@ def test_get_pod_health_readiness_and_liveness():
     assert "CrashLoopBackOff" in health[1]["liveness"]
 
 
+def test_get_pod_health_supports_label_selector():
+    ops = FakeOps(
+        {
+            "get pods -n default -l app=api": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-1"},
+                        "status": {
+                            "phase": "Running",
+                            "conditions": [{"type": "Ready", "status": "True"}],
+                            "containerStatuses": [{"restartCount": 0, "state": {"running": {}}}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    health = ops.get_pod_health(namespace="default", label_selector="app=api")
+
+    assert len(health) == 1
+    assert health[0]["name"] == "api-1"
+
+
 def test_restart_pod_uses_delete():
     ops = FakeOps({}, run_payloads={"delete pod api-1 -n default": "pod \"api-1\" deleted\n"})
 

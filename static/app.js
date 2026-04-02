@@ -17,6 +17,10 @@ async function fetchJsonSafe(url, fallback) {
   }
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function badge(value, type = "neutral") {
   return `<span class="badge ${type}">${value ?? "n/a"}</span>`;
 }
@@ -55,38 +59,52 @@ function hydrateNamespaces(namespaces) {
 
 async function refresh() {
   const namespace = qs("namespace").value || "default";
+  const labelSelector = qs("selector").value.trim();
 
-  try {
-    qs("status").textContent = "Refreshing...";
-    const [contexts, namespaces, nodes, pods, deployments, events, summary, storage] = await Promise.all([
-      fetchJson("/api/contexts"),
-      fetchJson("/api/namespaces"),
-      fetchJson("/api/nodes"),
-      fetchJson(`/api/pod-health?namespace=${encodeURIComponent(namespace)}`),
-      fetchJson(`/api/deployments?namespace=${encodeURIComponent(namespace)}`),
-      fetchJson(`/api/events?namespace=${encodeURIComponent(namespace)}&limit=20`),
-      fetchJson(`/api/summary?namespace=${encodeURIComponent(namespace)}`),
-      fetchJsonSafe(`/api/storage?namespace=${encodeURIComponent(namespace)}`, { unavailable: true }),
-    ]);
+  qs("status").textContent = "Refreshing...";
+  const podHealthUrl = new URL("/api/pod-health", window.location.origin);
+  podHealthUrl.searchParams.set("namespace", namespace);
+  if (labelSelector) {
+    podHealthUrl.searchParams.set("label_selector", labelSelector);
+  }
 
-    hydrateNamespaces(namespaces);
-    qs("contexts").textContent = JSON.stringify(contexts, null, 2);
-    qs("summary").textContent = JSON.stringify(summary, null, 2);
-    qs("storage").textContent = JSON.stringify(storage, null, 2);
-    qs("nodeTable").querySelector("tbody").innerHTML = nodeRows(nodes);
-    qs("podsTable").querySelector("tbody").innerHTML = podRows(pods, namespace);
-    qs("depTable").querySelector("tbody").innerHTML = deploymentRows(deployments, namespace);
-    qs("events").innerHTML = events
-      .map((e) => `<li><strong>${e.time ?? "n/a"}</strong> <span class="reason">${e.type ?? "?"}/${e.reason ?? "?"}</span> ${e.object ?? ""}<div>${e.message ?? ""}</div></li>`)
-      .join("");
+  const [contexts, namespaces, nodes, pods, deployments, events, summary, storage] = await Promise.all([
+    fetchJsonSafe("/api/contexts", {}),
+    fetchJsonSafe("/api/namespaces", []),
+    fetchJsonSafe("/api/nodes", []),
+    fetchJsonSafe(podHealthUrl.toString(), []),
+    fetchJsonSafe(`/api/deployments?namespace=${encodeURIComponent(namespace)}`, []),
+    fetchJsonSafe(`/api/events?namespace=${encodeURIComponent(namespace)}&limit=20`, []),
+    fetchJsonSafe(`/api/summary?namespace=${encodeURIComponent(namespace)}`, {}),
+    fetchJsonSafe(`/api/storage?namespace=${encodeURIComponent(namespace)}`, { unavailable: true }),
+  ]);
 
-    if (storage._error) {
-      qs("status").textContent = `Partial refresh: storage monitor unavailable (${storage._error})`;
-    } else {
-      qs("status").textContent = "Last refresh successful.";
-    }
-  } catch (err) {
-    qs("status").textContent = `Error: ${err.message}`;
+  hydrateNamespaces(asArray(namespaces));
+  qs("contexts").textContent = JSON.stringify(contexts, null, 2);
+  qs("summary").textContent = JSON.stringify(summary, null, 2);
+  qs("storage").textContent = JSON.stringify(storage, null, 2);
+  qs("nodeTable").querySelector("tbody").innerHTML = nodeRows(asArray(nodes));
+  qs("podsTable").querySelector("tbody").innerHTML = podRows(asArray(pods), namespace);
+  qs("depTable").querySelector("tbody").innerHTML = deploymentRows(asArray(deployments), namespace);
+  qs("events").innerHTML = asArray(events)
+    .map((e) => `<li><strong>${e.time ?? "n/a"}</strong> <span class="reason">${e.type ?? "?"}/${e.reason ?? "?"}</span> ${e.object ?? ""}<div>${e.message ?? ""}</div></li>`)
+    .join("");
+
+  const endpointErrors = [
+    contexts._error && `contexts: ${contexts._error}`,
+    namespaces._error && `namespaces: ${namespaces._error}`,
+    nodes._error && `nodes: ${nodes._error}`,
+    pods._error && `pod-health: ${pods._error}`,
+    deployments._error && `deployments: ${deployments._error}`,
+    events._error && `events: ${events._error}`,
+    summary._error && `summary: ${summary._error}`,
+    storage._error && `storage: ${storage._error}`,
+  ].filter(Boolean);
+
+  if (endpointErrors.length > 0) {
+    qs("status").textContent = `Partial refresh (${endpointErrors.length} endpoint error(s)): ${endpointErrors.join(" | ")}`;
+  } else {
+    qs("status").textContent = "Last refresh successful.";
   }
 }
 
