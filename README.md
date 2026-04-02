@@ -28,11 +28,13 @@ This repository now contains a practical MVP for:
 - `get_pod_logs(namespace, pod, container=None, tail_lines=200)`
 - `rollout_status(namespace, deployment, timeout_seconds=120)`
 - `restart_pod(namespace, pod)`
+- `restart_stopped_pods(namespace="default")`
 - `scale_deployment(namespace, deployment, replicas)`
 - `restart_deployment(namespace, deployment)`
 - `cordon_node(node)`
 - `uncordon_node(node)`
 - `get_recent_events(namespace="default", limit=25)`
+- `get_pvc_pv_status(namespace="default")`
 - `get_namespace_report(namespace="default")`
 - `cluster_health_summary(namespace="default")`
 
@@ -44,6 +46,7 @@ This repository now contains a practical MVP for:
   - cluster health summary
   - node readiness table
   - pod table with readiness/liveness health
+  - PVC/PV monitor summary
   - deployment readiness
   - recent events
 - Restart a deployment from the table.

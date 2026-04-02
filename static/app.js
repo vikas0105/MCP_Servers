@@ -50,7 +50,7 @@ async function refresh() {
 
   try {
     qs("status").textContent = "Refreshing...";
-    const [contexts, namespaces, nodes, pods, deployments, events, summary] = await Promise.all([
+    const [contexts, namespaces, nodes, pods, deployments, events, summary, storage] = await Promise.all([
       fetchJson("/api/contexts"),
       fetchJson("/api/namespaces"),
       fetchJson("/api/nodes"),
@@ -58,11 +58,13 @@ async function refresh() {
       fetchJson(`/api/deployments?namespace=${encodeURIComponent(namespace)}`),
       fetchJson(`/api/events?namespace=${encodeURIComponent(namespace)}&limit=20`),
       fetchJson(`/api/summary?namespace=${encodeURIComponent(namespace)}`),
+      fetchJson(`/api/storage?namespace=${encodeURIComponent(namespace)}`),
     ]);
 
     hydrateNamespaces(namespaces);
     qs("contexts").textContent = JSON.stringify(contexts, null, 2);
     qs("summary").textContent = JSON.stringify(summary, null, 2);
+    qs("storage").textContent = JSON.stringify(storage, null, 2);
     qs("nodeTable").querySelector("tbody").innerHTML = nodeRows(nodes);
     qs("podsTable").querySelector("tbody").innerHTML = podRows(pods, namespace);
     qs("depTable").querySelector("tbody").innerHTML = deploymentRows(deployments, namespace);
@@ -76,6 +78,18 @@ async function refresh() {
 }
 
 qs("refreshBtn").addEventListener("click", refresh);
+
+qs("restartStoppedBtn").addEventListener("click", async () => {
+  const namespace = qs("namespace").value || "default";
+  try {
+    qs("status").textContent = `Restarting stopped pods in ${namespace}...`;
+    const result = await fetchJson(`/api/restart-stopped-pods/${namespace}`, { method: "POST" });
+    qs("status").textContent = `Stopped pods restarted: ${result.restarted_pods?.length ?? 0}`;
+    await refresh();
+  } catch (err) {
+    qs("status").textContent = `Restart stopped pods failed: ${err.message}`;
+  }
+});
 
 qs("depTable").addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-dep]");

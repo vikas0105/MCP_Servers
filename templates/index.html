@@ -18,6 +18,7 @@
         <datalist id="namespaces"></datalist>
         <label>Label selector <input id="selector" placeholder="app=my-service" /></label>
         <button id="refreshBtn">Refresh</button>
+        <button id="restartStoppedBtn">Restart Stopped Pods</button>
       </section>
 
       <section class="card">
@@ -38,6 +39,12 @@
       <section class="card">
         <h2>Pod Health (Readiness/Liveness)</h2>
         <table id="podsTable"><thead><tr><th>Name</th><th>Phase</th><th>Readiness</th><th>Liveness</th><th>Restarts</th><th>Pod IP</th><th>Node</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </section>
+
+
+      <section class="card">
+        <h2>PVC / PV Monitor</h2>
+        <pre id="storage">Loading...</pre>
       </section>
 
       <section class="card">

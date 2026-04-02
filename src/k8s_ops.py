@@ -162,6 +162,23 @@ class K8sOps:
             "result": result.stdout.strip() or "pod restart triggered",
         }
 
+    def restart_stopped_pods(self, namespace: str = "default") -> dict[str, Any]:
+        health = self.get_pod_health(namespace=namespace)
+        stopped = [p for p in health if p.get("phase") in {"Failed", "Succeeded", "Unknown"}]
+
+        restarted = []
+        for pod in stopped:
+            name = pod.get("name")
+            if not name:
+                continue
+            restarted.append(self.restart_pod(namespace=namespace, pod=name))
+
+        return {
+            "namespace": namespace,
+            "stopped_pods_found": len(stopped),
+            "restarted_pods": restarted,
+        }
+
     def scale_deployment(self, namespace: str, deployment: str, replicas: int) -> dict[str, Any]:
         result = self._run(["scale", "deployment", deployment, "-n", namespace, f"--replicas={replicas}"])
         return {
@@ -263,11 +280,67 @@ class K8sOps:
             )
         return events[-limit:]
 
+    def get_pvc_pv_status(self, namespace: str = "default") -> dict[str, Any]:
+        pods_doc = self._json(["get", "pods", "-n", namespace])
+        pvc_doc = self._json(["get", "pvc", "-n", namespace])
+        pv_doc = self._json(["get", "pv"])
+
+        pvc_map = {}
+        for pvc in pvc_doc.get("items", []):
+            name = pvc.get("metadata", {}).get("name")
+            if not name:
+                continue
+            pvc_map[name] = {
+                "name": name,
+                "phase": pvc.get("status", {}).get("phase"),
+                "volume_name": pvc.get("spec", {}).get("volumeName"),
+                "storage": pvc.get("status", {}).get("capacity", {}).get("storage"),
+            }
+
+        pv_map = {}
+        for pv in pv_doc.get("items", []):
+            name = pv.get("metadata", {}).get("name")
+            if not name:
+                continue
+            pv_map[name] = {
+                "name": name,
+                "phase": pv.get("status", {}).get("phase"),
+                "storage": pv.get("spec", {}).get("capacity", {}).get("storage"),
+                "claim": pv.get("spec", {}).get("claimRef", {}).get("name"),
+                "claim_namespace": pv.get("spec", {}).get("claimRef", {}).get("namespace"),
+            }
+
+        pod_storage = []
+        for pod in pods_doc.get("items", []):
+            pod_name = pod.get("metadata", {}).get("name")
+            claims = []
+            for volume in pod.get("spec", {}).get("volumes", []):
+                claim_name = volume.get("persistentVolumeClaim", {}).get("claimName")
+                if not claim_name:
+                    continue
+                pvc_info = pvc_map.get(claim_name, {"name": claim_name, "phase": "Missing"})
+                pv_info = pv_map.get(pvc_info.get("volume_name", ""), {}) if pvc_info.get("volume_name") else {}
+                claims.append({"pvc": pvc_info, "pv": pv_info})
+            pod_storage.append({"pod": pod_name, "claims": claims})
+
+        pvc_unbound = [p for p in pvc_map.values() if p.get("phase") != "Bound"]
+        pv_unbound = [p for p in pv_map.values() if p.get("phase") not in {"Bound", "Available"}]
+
+        return {
+            "namespace": namespace,
+            "pod_storage": pod_storage,
+            "total_pvcs": len(pvc_map),
+            "total_pvs": len(pv_map),
+            "unbound_pvcs": pvc_unbound,
+            "problem_pvs": pv_unbound,
+        }
+
     def get_namespace_report(self, namespace: str = "default") -> dict[str, Any]:
         pod_health = self.get_pod_health(namespace=namespace)
         deployments = self.get_deployments(namespace=namespace)
         services = self.get_services(namespace=namespace)
         events = self.get_recent_events(namespace=namespace, limit=20)
+        storage = self.get_pvc_pv_status(namespace=namespace)
 
         not_ready_pods = [p for p in pod_health if p.get("readiness") != "ready"]
         degraded_pods = [p for p in pod_health if p.get("liveness") != "healthy"]
@@ -279,6 +352,8 @@ class K8sOps:
             "pods_degraded": len(degraded_pods),
             "deployments_total": len(deployments),
             "services_total": len(services),
+            "storage_unbound_pvcs": len(storage.get("unbound_pvcs", [])),
+            "storage_problem_pvs": len(storage.get("problem_pvs", [])),
             "recent_events": events,
             "services": services,
             "degraded_pod_names": [p.get("name") for p in degraded_pods],

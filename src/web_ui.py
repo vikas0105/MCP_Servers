@@ -66,6 +66,22 @@ def restart_pod(namespace: str, pod: str) -> dict:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.get("/api/storage")
+def storage(namespace: str = Query("default")) -> dict:
+    try:
+        return ops.get_pvc_pv_status(namespace=namespace)
+    except KubectlError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/restart-stopped-pods/{namespace}")
+def restart_stopped_pods(namespace: str) -> dict:
+    try:
+        return ops.restart_stopped_pods(namespace=namespace)
+    except KubectlError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @app.get("/api/deployments")
 def deployments(namespace: str = Query("default")) -> list[dict]:
     try:

@@ -216,6 +216,8 @@ def test_namespace_report_aggregates_signals():
             },
             "get deployments -n default": {"items": []},
             "get services -n default": {"items": []},
+            "get pvc -n default": {"items": []},
+            "get pv": {"items": []},
             "get events -n default --sort-by=.lastTimestamp": {"items": []},
         }
     )
@@ -225,3 +227,75 @@ def test_namespace_report_aggregates_signals():
     assert report["pods_total"] == 1
     assert report["pods_not_ready"] == 1
     assert report["pods_degraded"] == 1
+
+
+def test_restart_stopped_pods_restarts_failed_or_succeeded():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "stopped-1"},
+                        "status": {"phase": "Failed", "conditions": [], "containerStatuses": []},
+                    },
+                    {
+                        "metadata": {"name": "running-1"},
+                        "status": {
+                            "phase": "Running",
+                            "conditions": [{"type": "Ready", "status": "True"}],
+                            "containerStatuses": [{"restartCount": 0, "state": {"running": {}}}],
+                        },
+                    },
+                ]
+            }
+        },
+        run_payloads={"delete pod stopped-1 -n default": "pod \"stopped-1\" deleted\n"},
+    )
+
+    result = ops.restart_stopped_pods(namespace="default")
+
+    assert result["stopped_pods_found"] == 1
+    assert result["restarted_pods"][0]["pod"] == "stopped-1"
+
+
+def test_get_pvc_pv_status_maps_claims_to_pods():
+    ops = FakeOps(
+        {
+            "get pods -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-1"},
+                        "spec": {"volumes": [{"name": "data", "persistentVolumeClaim": {"claimName": "api-data"}}]},
+                    }
+                ]
+            },
+            "get pvc -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "api-data"},
+                        "status": {"phase": "Bound", "capacity": {"storage": "5Gi"}},
+                        "spec": {"volumeName": "pv-api-data"},
+                    }
+                ]
+            },
+            "get pv": {
+                "items": [
+                    {
+                        "metadata": {"name": "pv-api-data"},
+                        "status": {"phase": "Bound"},
+                        "spec": {
+                            "capacity": {"storage": "5Gi"},
+                            "claimRef": {"name": "api-data", "namespace": "default"},
+                        },
+                    }
+                ]
+            },
+        }
+    )
+
+    storage = ops.get_pvc_pv_status(namespace="default")
+
+    assert storage["total_pvcs"] == 1
+    assert storage["total_pvs"] == 1
+    assert storage["pod_storage"][0]["pod"] == "api-1"
+    assert storage["pod_storage"][0]["claims"][0]["pvc"]["name"] == "api-data"

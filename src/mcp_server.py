@@ -53,6 +53,12 @@ def restart_pod(namespace: str, pod: str) -> dict:
 
 
 @mcp.tool()
+def restart_stopped_pods(namespace: str = "default") -> dict:
+    """Restart all stopped pods (Failed/Succeeded/Unknown) in a namespace."""
+    return ops.restart_stopped_pods(namespace=namespace)
+
+
+@mcp.tool()
 def scale_deployment(namespace: str, deployment: str, replicas: int) -> dict:
     """Scale a deployment to a target replica count."""
     return ops.scale_deployment(namespace=namespace, deployment=deployment, replicas=replicas)
@@ -104,6 +110,12 @@ def restart_deployment(namespace: str, deployment: str) -> dict:
 def get_recent_events(namespace: str = "default", limit: int = 25) -> list[dict]:
     """Return recent events to triage incidents quickly."""
     return ops.get_recent_events(namespace=namespace, limit=limit)
+
+
+@mcp.tool()
+def get_pvc_pv_status(namespace: str = "default") -> dict:
+    """Inspect PVC/PV status and pod-to-claim mappings in a namespace."""
+    return ops.get_pvc_pv_status(namespace=namespace)
 
 
 @mcp.tool()
