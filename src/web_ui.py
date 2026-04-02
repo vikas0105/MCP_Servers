@@ -57,6 +57,32 @@ def contexts() -> dict:
         }
 
 
+@app.post("/api/contexts/{context}")
+def switch_context(context: str) -> dict:
+    try:
+        return ops.switch_context(context=context)
+    except KubectlError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/cluster/version")
+def cluster_version() -> dict:
+    try:
+        return ops.get_cluster_version()
+    except Exception as exc:
+        return {"client": {}, "server": {}, "_error": str(exc)}
+
+
+@app.get("/api/cluster/connectivity")
+def cluster_connectivity() -> dict:
+    try:
+        result = ops.check_connectivity()
+        result.update(ops.get_api_latency_ms())
+        return result
+    except Exception as exc:
+        return {"connected": False, "readyz": "unavailable", "latency_ms": -1, "_error": str(exc)}
+
+
 @app.get("/api/namespaces")
 def namespaces() -> list[str]:
     try:
@@ -138,6 +164,30 @@ def storage(namespace: str = Query("default")) -> dict:
             "problem_pvs": [],
             "_error": str(exc),
         }
+
+
+@app.get("/api/services")
+def services(namespace: str = Query("default")) -> list[dict]:
+    try:
+        return ops.get_services(namespace=namespace)
+    except Exception:
+        return []
+
+
+@app.get("/api/ingresses")
+def ingresses(namespace: str = Query("default")) -> list[dict]:
+    try:
+        return ops.get_ingresses(namespace=namespace)
+    except Exception:
+        return []
+
+
+@app.get("/api/rbac")
+def rbac(namespace: str = Query("default")) -> dict:
+    try:
+        return ops.get_rbac_overview(namespace=namespace)
+    except Exception as exc:
+        return {"namespace": namespace, "service_accounts": [], "roles": [], "role_bindings": [], "_error": str(exc)}
 
 
 @app.post("/api/restart-stopped-pods/{namespace}")

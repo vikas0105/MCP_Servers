@@ -15,6 +15,30 @@ def list_contexts() -> dict:
 
 
 @mcp.tool()
+def switch_context(context: str) -> dict:
+    """Switch active kubectl context."""
+    return ops.switch_context(context=context)
+
+
+@mcp.tool()
+def get_cluster_version() -> dict:
+    """Return Kubernetes client/server version information."""
+    return ops.get_cluster_version()
+
+
+@mcp.tool()
+def check_connectivity() -> dict:
+    """Check API server readiness endpoint connectivity."""
+    return ops.check_connectivity()
+
+
+@mcp.tool()
+def get_api_latency_ms() -> dict:
+    """Measure basic API server latency using /livez."""
+    return ops.get_api_latency_ms()
+
+
+@mcp.tool()
 def get_namespaces() -> list[str]:
     """List all namespaces in the current Kubernetes context."""
     return ops.get_namespaces()
@@ -30,6 +54,12 @@ def get_nodes() -> list[dict]:
 def get_services(namespace: str = "default") -> list[dict]:
     """List services and exposed ports in a namespace."""
     return ops.get_services(namespace=namespace)
+
+
+@mcp.tool()
+def get_ingresses(namespace: str = "default") -> list[dict]:
+    """List ingress objects and hosts in a namespace."""
+    return ops.get_ingresses(namespace=namespace)
 
 
 @mcp.tool()
@@ -126,6 +156,12 @@ def get_pvc_pv_status(namespace: str = "default") -> dict:
 def get_namespace_report(namespace: str = "default") -> dict:
     """Return a compact namespace report with pod, service, deployment, and event signals."""
     return ops.get_namespace_report(namespace=namespace)
+
+
+@mcp.tool()
+def get_rbac_overview(namespace: str = "default") -> dict:
+    """Return a compact RBAC overview for a namespace."""
+    return ops.get_rbac_overview(namespace=namespace)
 
 
 @mcp.tool()

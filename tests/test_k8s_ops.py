@@ -212,6 +212,63 @@ def test_get_services_parses_ports():
     assert services[0]["ports"] == ["80/TCP"]
 
 
+def test_switch_context_uses_use_context():
+    ops = FakeOps({}, run_payloads={"config use-context prod": "Switched to context \"prod\".\n"})
+    result = ops.switch_context("prod")
+    assert result["current_context"] == "prod"
+
+
+def test_get_cluster_version_parses_client_server():
+    ops = FakeOps(
+        {
+            "version": {
+                "clientVersion": {"gitVersion": "v1.30.0"},
+                "serverVersion": {"gitVersion": "v1.29.9"},
+            }
+        }
+    )
+    version = ops.get_cluster_version()
+    assert version["client"]["gitVersion"] == "v1.30.0"
+    assert version["server"]["gitVersion"] == "v1.29.9"
+
+
+def test_get_ingresses_parses_hosts():
+    ops = FakeOps(
+        {
+            "get ingress -n default": {
+                "items": [
+                    {
+                        "metadata": {"name": "web"},
+                        "spec": {
+                            "ingressClassName": "nginx",
+                            "rules": [{"host": "app.example.com"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+    ingresses = ops.get_ingresses()
+    assert ingresses[0]["name"] == "web"
+    assert ingresses[0]["hosts"] == ["app.example.com"]
+
+
+def test_get_rbac_overview_summarizes_objects():
+    ops = FakeOps(
+        {
+            "get serviceaccounts -n default": {"items": [{"metadata": {"name": "default"}}]},
+            "get roles -n default": {"items": [{"metadata": {"name": "reader"}}]},
+            "get rolebindings -n default": {"items": [{"metadata": {"name": "reader-binding"}}]},
+            "get clusterroles": {"items": [{"metadata": {"name": "cluster-admin"}}]},
+            "get clusterrolebindings": {"items": [{"metadata": {"name": "cluster-admin-binding"}}]},
+        }
+    )
+    overview = ops.get_rbac_overview()
+    assert overview["service_accounts"] == ["default"]
+    assert overview["roles"] == ["reader"]
+    assert overview["cluster_roles_count"] == 1
+
+
 def test_scale_deployment_invokes_kubectl_scale():
     ops = FakeOps({}, run_payloads={"scale deployment api -n default --replicas=3": "deployment.apps/api scaled\n"})
 

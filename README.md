@@ -18,9 +18,14 @@ This repository now contains a practical MVP for:
 ### MCP tools
 
 - `list_contexts()`
+- `switch_context(context)`
+- `get_cluster_version()`
+- `check_connectivity()`
+- `get_api_latency_ms()`
 - `get_namespaces()`
 - `get_nodes()`
 - `get_services(namespace="default")`
+- `get_ingresses(namespace="default")`
 - `get_pods(namespace="default", label_selector=None)`
 - `get_pod_health(namespace="default", pod=None, label_selector=None)`
 - `get_deployments(namespace="default")`
@@ -36,6 +41,7 @@ This repository now contains a practical MVP for:
 - `get_recent_events(namespace="default", limit=25)`
 - `get_pvc_pv_status(namespace="default")`
 - `get_namespace_report(namespace="default")`
+- `get_rbac_overview(namespace="default")`
 - `cluster_health_summary(namespace="default")`
 
 ### Web UI
@@ -237,6 +243,7 @@ The workflow also sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and uses latest
   - fallback to `load_kube_config()` for local/dev usage.
 - Read-only API endpoints are fail-soft (return empty/default payloads with `_error` where relevant) to avoid full dashboard failure when cluster access is temporarily unavailable.
 - Mutating action in MVP: deployment restart.
+- Recent expansion aligned to the “Kubernetes UI use-case matrix” includes context switching, cluster version/connectivity/latency checks, ingress listing, and RBAC overview endpoints/tools.
 - Future hardening ideas:
   - RBAC policy checks
   - action audit logs

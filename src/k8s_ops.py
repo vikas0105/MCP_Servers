@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -50,6 +51,27 @@ class K8sOps:
         current_context = self._run(["config", "current-context"]).stdout.strip()
         return {"current_context": current_context, "contexts": contexts}
 
+    def switch_context(self, context: str) -> dict[str, str]:
+        self._run(["config", "use-context", context])
+        return {"current_context": context}
+
+    def get_cluster_version(self) -> dict[str, Any]:
+        doc = self._json(["version"])
+        return {
+            "client": doc.get("clientVersion", {}),
+            "server": doc.get("serverVersion", {}),
+        }
+
+    def check_connectivity(self) -> dict[str, Any]:
+        result = self._run(["get", "--raw=/readyz"])
+        return {"connected": True, "readyz": result.stdout.strip() or "ok"}
+
+    def get_api_latency_ms(self) -> dict[str, float]:
+        start = time.perf_counter()
+        self._run(["get", "--raw=/livez"])
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        return {"latency_ms": round(elapsed_ms, 2)}
+
     def get_namespaces(self) -> list[str]:
         doc = self._json(["get", "namespaces"])
         return [item.get("metadata", {}).get("name", "") for item in doc.get("items", []) if item.get("metadata", {}).get("name")]
@@ -85,6 +107,21 @@ class K8sOps:
                 }
             )
         return services
+
+    def get_ingresses(self, namespace: str = "default") -> list[dict[str, Any]]:
+        doc = self._json(["get", "ingress", "-n", namespace])
+        ingresses = []
+        for item in doc.get("items", []):
+            rules = item.get("spec", {}).get("rules", [])
+            hosts = [rule.get("host") for rule in rules if rule.get("host")]
+            ingresses.append(
+                {
+                    "name": item.get("metadata", {}).get("name"),
+                    "class": item.get("spec", {}).get("ingressClassName"),
+                    "hosts": hosts,
+                }
+            )
+        return ingresses
 
     def get_pods(self, namespace: str = "default", label_selector: str | None = None) -> list[dict[str, Any]]:
         args = ["get", "pods", "-n", namespace]
@@ -364,6 +401,22 @@ class K8sOps:
             "recent_events": events,
             "services": services,
             "degraded_pod_names": [p.get("name") for p in degraded_pods],
+        }
+
+    def get_rbac_overview(self, namespace: str = "default") -> dict[str, Any]:
+        service_accounts = self._json(["get", "serviceaccounts", "-n", namespace]).get("items", [])
+        roles = self._json(["get", "roles", "-n", namespace]).get("items", [])
+        role_bindings = self._json(["get", "rolebindings", "-n", namespace]).get("items", [])
+        cluster_roles = self._json(["get", "clusterroles"]).get("items", [])
+        cluster_role_bindings = self._json(["get", "clusterrolebindings"]).get("items", [])
+
+        return {
+            "namespace": namespace,
+            "service_accounts": [s.get("metadata", {}).get("name") for s in service_accounts],
+            "roles": [r.get("metadata", {}).get("name") for r in roles],
+            "role_bindings": [rb.get("metadata", {}).get("name") for rb in role_bindings],
+            "cluster_roles_count": len(cluster_roles),
+            "cluster_role_bindings_count": len(cluster_role_bindings),
         }
 
     def cluster_health_summary(self, namespace: str = "default") -> dict[str, Any]:
