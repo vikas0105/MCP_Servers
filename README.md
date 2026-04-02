@@ -235,6 +235,7 @@ The workflow also sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and uses latest
 - The web service auto-loads Kubernetes config at startup using:
   - `load_incluster_config()` when running inside Kubernetes,
   - fallback to `load_kube_config()` for local/dev usage.
+- Read-only API endpoints are fail-soft (return empty/default payloads with `_error` where relevant) to avoid full dashboard failure when cluster access is temporarily unavailable.
 - Mutating action in MVP: deployment restart.
 - Future hardening ideas:
   - RBAC policy checks

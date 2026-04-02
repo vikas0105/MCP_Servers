@@ -6,8 +6,10 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from kubernetes import client
-from kubernetes.client.rest import ApiException
+try:
+    from kubernetes import client
+except ModuleNotFoundError:  # pragma: no cover - runtime-dependent
+    client = None
 
 from k8s_config import load_k8s_config
 from k8s_ops import K8sOps, KubectlError
@@ -18,11 +20,13 @@ app = FastAPI(title="Kubernetes SRE Copilot MVP")
 ops = K8sOps()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+K8S_CONFIG_STATUS: dict[str, str] = {"mode": "unknown", "status": "unknown"}
 
 
 @app.on_event("startup")
 def startup() -> None:
-    load_k8s_config()
+    global K8S_CONFIG_STATUS
+    K8S_CONFIG_STATUS = load_k8s_config()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -44,25 +48,32 @@ def ready() -> dict[str, str]:
 def contexts() -> dict:
     try:
         return ops.list_contexts()
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        return {
+            "current_context": "unavailable",
+            "contexts": [],
+            "_error": str(exc),
+            "config_status": K8S_CONFIG_STATUS,
+        }
 
 
 @app.get("/api/namespaces")
 def namespaces() -> list[str]:
     try:
+        if client is None:
+            return []
         v1 = client.CoreV1Api()
         ns = v1.list_namespace()
         return [item.metadata.name for item in ns.items]
-    except ApiException as exc:
-        raise HTTPException(status_code=500, detail=f"K8s API error: {exc}") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+    except Exception:
+        return []
 
 
 @app.get("/api/nodes")
 def nodes() -> list[dict]:
     try:
+        if client is None:
+            return []
         v1 = client.CoreV1Api()
         node_list = v1.list_node()
         response = []
@@ -81,18 +92,16 @@ def nodes() -> list[dict]:
                 }
             )
         return response
-    except ApiException as exc:
-        raise HTTPException(status_code=500, detail=f"K8s API error: {exc}") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+    except Exception:
+        return []
 
 
 @app.get("/api/pods")
 def pods(namespace: str = Query("default"), label_selector: str | None = Query(None)) -> list[dict]:
     try:
         return ops.get_pods(namespace=namespace, label_selector=label_selector)
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        return []
 
 
 @app.get("/api/pod-health")
@@ -103,8 +112,8 @@ def pod_health(
 ) -> list[dict]:
     try:
         return ops.get_pod_health(namespace=namespace, pod=pod, label_selector=label_selector)
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        return []
 
 
 @app.post("/api/restart-pod/{namespace}/{pod}")
@@ -119,8 +128,16 @@ def restart_pod(namespace: str, pod: str) -> dict:
 def storage(namespace: str = Query("default")) -> dict:
     try:
         return ops.get_pvc_pv_status(namespace=namespace)
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        return {
+            "namespace": namespace,
+            "pod_storage": [],
+            "total_pvcs": 0,
+            "total_pvs": 0,
+            "unbound_pvcs": [],
+            "problem_pvs": [],
+            "_error": str(exc),
+        }
 
 
 @app.post("/api/restart-stopped-pods/{namespace}")
@@ -134,6 +151,8 @@ def restart_stopped_pods(namespace: str) -> dict:
 @app.get("/api/deployments")
 def deployments(namespace: str = Query("default")) -> list[dict]:
     try:
+        if client is None:
+            return []
         apps_v1 = client.AppsV1Api()
         deps = apps_v1.list_namespaced_deployment(namespace=namespace)
         return [
@@ -146,26 +165,35 @@ def deployments(namespace: str = Query("default")) -> list[dict]:
             }
             for dep in deps.items
         ]
-    except ApiException as exc:
-        raise HTTPException(status_code=500, detail=f"K8s API error: {exc}") from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+        return []
 
 
 @app.get("/api/events")
 def events(namespace: str = Query("default"), limit: int = Query(25, ge=1, le=200)) -> list[dict]:
     try:
         return ops.get_recent_events(namespace=namespace, limit=limit)
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        return []
 
 
 @app.get("/api/summary")
 def summary(namespace: str = Query("default")) -> dict:
     try:
         return ops.cluster_health_summary(namespace=namespace)
-    except KubectlError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        return {
+            "namespace": namespace,
+            "pod_count": 0,
+            "deployment_count": 0,
+            "unhealthy_pods": [],
+            "degraded_deployments": [],
+            "warning_event_count": 0,
+            "recent_warning_events": [],
+            "overall_status": "unknown",
+            "_error": str(exc),
+            "config_status": K8S_CONFIG_STATUS,
+        }
 
 
 @app.post("/api/restart/{namespace}/{deployment}")
