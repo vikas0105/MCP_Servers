@@ -77,6 +77,16 @@ python src/mcp_server.py
 
 Then configure your MCP client to launch that command.
 
+### 4) Run simulated local test (no Docker/Kubernetes required)
+
+If you want to validate API/UI wiring without a cluster, run:
+
+```bash
+python scripts/local_simulation_check.py
+```
+
+This script injects a simulated `K8sOps` backend with fixture responses and exercises health checks plus key `/api/*` routes end-to-end.
+
 ## Docker usage
 
 ### Build image
